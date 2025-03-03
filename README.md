@@ -78,16 +78,13 @@ Modifies alphabetical and natural sorting to distinguish between uppercase and l
 Displays the help message with all available options and examples. Stops execution and provides a quick reference for usage, perfect for learning or troubleshooting the tool.
 
 
-
-Examples:\
-      ```dirstat-project-size /path/to/project```\ Run in a specific path 
-      ```dirstat-project-size --exclude=node_modules --exclude=.git```\ Exclude specific folders
-      ```dirstat-project-size --toggle-ascii```\ Use ascii characters for the bar chart instead of unicode
-      ```dirstat-project-size --only-bar-color```\ Only colorize the bars 
-      ```dirstat-project-size /path/to/project --sort-alpha-asc```\ Sort the list alfabetically from Z to A
-      ```dirstat-project-size --sort-natural-desc --case-sensitive```Sort by smal
-
 ## Example Usage:
+```dirstat-project-size /path/to/project``` Run in a specific path \
+```dirstat-project-size --exclude=node_modules --exclude=.git``` Exclude specific folders\
+```dirstat-project-size --toggle-ascii``` Use ascii characters for the bar chart instead of unicode\
+```dirstat-project-size --only-bar-color``` Only colorize the bars \
+```dirstat-project-size /path/to/project --sort-alpha-asc``` Sort the list alfabetically from Z to A\
+```dirstat-project-size --sort-natural-desc --case-sensitive```Sort by smal distinguishing between uppercase and lowercase letters
 
 ```dirstat-project-size  --sort-descending --only-bar-color```
 
