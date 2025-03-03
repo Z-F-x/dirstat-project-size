@@ -28,7 +28,7 @@ The idea is to get a quick overview of a new codebase to assess the project size
   `--sort-natural-desc` Sort with natural ordering descending\
   `--case-sensitive`    Make alphabetical sorting case-sensitive
 
-Examples:
+Examples:\
       ```dirstat-project-size /path/to/project```\
       ```dirstat-project-size /path/to/project --exclude=node_modules --exclude=.git```\
       ```dirstat-project-size --toggle-ascii```\
