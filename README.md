@@ -3,6 +3,11 @@
 ## Show statistics of current directory
 The idea is to get a quick overview of a new codebase to assess the project size, history and scope.
 
+## Installation
+```git clone https://github.com/Z-F-x/dirstat-project-size.git```\
+```cd dirstat-project-size```\
+```sudo cp dirstat-project-size /usr/bin```
+
 ## Usage
 
 ### Options:
