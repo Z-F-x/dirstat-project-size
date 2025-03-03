@@ -28,7 +28,15 @@ The idea is to get a quick overview of a new codebase to assess the project size
   `--sort-natural-desc` Sort with natural ordering descending\
   `--case-sensitive`    Make alphabetical sorting case-sensitive
 
-Example 
+Examples:
+      ```dirstat-project-size /path/to/project```\
+      ```dirstat-project-size /path/to/project --exclude=node_modules --exclude=.git```\
+      ```dirstat-project-size --toggle-ascii```\
+      ```dirstat-project-size --only-bar-color```\
+      ```dirstat-project-size /path/to/project --sort-alpha-asc```\
+      ```dirstat-project-size --sort-natural-desc --case-sensitive```
+
+## Example Usage:
 
 ```dirstat-project-size  --sort-descending --only-bar-color```
 
@@ -37,4 +45,5 @@ Example
 Result:
 
 ![image](https://github.com/user-attachments/assets/11652dba-ebd3-4fbd-a347-a7cb266baf9b)
+
 
