@@ -315,7 +315,7 @@ void print_bar(double percentage, const char *color) {
         if (toggleAscii)
             printf("-");
         else
-            printf("▒");
+            printf(" "); //▒
     }
     if (useColor)
         printf(ANSI_RESET);
