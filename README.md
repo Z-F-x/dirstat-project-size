@@ -11,21 +11,21 @@ The idea is to get a quick overview of a new codebase to assess the project size
 ## Usage
 
 ### Options:
-  `-h`, `--help`           Display this help message
-  `--no-color`          Disable colorized output
-  `--toggle-ascii`      Use ASCII instead of Unicode blocks
-  `--only-bar-color`    Color only bars, not text
+  `-h`, `--help`           Display this help message\
+  `--no-color`          Disable colorized output\
+  `--toggle-ascii`      Use ASCII instead of Unicode blocks\
+  `--only-bar-color`    Color only bars, not text\
   `--exclude=pattern`   Exclude paths containing pattern
 
 ### Sorting Options:
-  `--sort-descending`   Sort by count descending (default)
-  `--sort-ascending`    Sort by count ascending
-  `--sort-alpha-asc`    Sort alphabetically A-Z
-  `--sort-alpha-desc`   Sort alphabetically Z-A
-  `--sort-num-asc`      Sort numerically ascending
-  `--sort-num-desc`     Sort numerically descending
-  `--sort-natural-asc`  Sort with natural ordering ascending
-  `--sort-natural-desc` Sort with natural ordering descending
+  `--sort-descending`   Sort by count descending (default)\
+  `--sort-ascending`    Sort by count ascending\
+  `--sort-alpha-asc`    Sort alphabetically A-Z\
+  `--sort-alpha-desc`   Sort alphabetically Z-A\
+  `--sort-num-asc`      Sort numerically ascending\
+  `--sort-num-desc`     Sort numerically descending\
+  `--sort-natural-asc`  Sort with natural ordering ascending\
+  `--sort-natural-desc` Sort with natural ordering descending\
   `--case-sensitive`    Make alphabetical sorting case-sensitive
 
 Examples: 
