@@ -28,8 +28,10 @@ The idea is to get a quick overview of a new codebase to assess the project size
   `--sort-natural-desc` Sort with natural ordering descending\
   `--case-sensitive`    Make alphabetical sorting case-sensitive
 
-Examples: 
+Example 
+
 ```dirstat-project-size  --sort-descending --only-bar-color```
+
 ![image](https://github.com/user-attachments/assets/288a7dff-27b2-4292-97c8-6d172c76ee7d)
 
 Result:
