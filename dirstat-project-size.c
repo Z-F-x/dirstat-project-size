@@ -1,3 +1,7 @@
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -362,6 +366,8 @@ int main(int argc, char *argv[]) {
     char cwd[PATH_MAX];
     const char *excludes[MAX_EXCLUDES];
     int num_excludes = 0;
+
+    system("chcp 65001 > nul");
     
     // First pass: Check if there's a directory argument (not starting with '-')
     int dir_arg_index = -1;
