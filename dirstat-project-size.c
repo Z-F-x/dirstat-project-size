@@ -27,6 +27,8 @@ int toggleAscii = 0;   // When true, use ASCII '#' for filled and '-' for empty
 int onlyBarColor = 0;  // When true, text is not colored except the bars
 int showDirs = 0;      // When true, list immediate subdirectories ranked by size
 int fastMode = 0;      // When true, sizes come from stat only; skip line/char counting
+int showProgress = 0;  // Live scan counter on stderr; set in main when stderr is a TTY
+long long scannedFiles = 0;
 
 // Top-level subdirectory sizes, filled during the main walk when --dirs is set
 // (single pass instead of a second full tree walk); DirSize defined below
@@ -269,6 +271,9 @@ long long process_path(const char *path, ProjectStats *projStats, ExtCount **ext
         return 0;
     if (S_ISREG(st.st_mode)) {
         projStats->numFiles++;
+        // Big trees scan silently for minutes; show life on the terminal
+        if (showProgress && (++scannedFiles & 0x3FFF) == 0)
+            fprintf(stderr, "\r\033[K%lld files scanned...", scannedFiles);
         if (fastMode) {
             projStats->stats.bytes += (long long) st.st_size;
         } else {
@@ -501,7 +506,10 @@ int main(int argc, char *argv[]) {
     int extCount = 0, extCapacity = 0;
     
     // Process the directory
+    showProgress = isatty(fileno(stderr));
     process_path(root, &projStats, &extCounts, &extCount, &extCapacity, excludes, num_excludes, 0);
+    if (showProgress)
+        fprintf(stderr, "\r\033[K");
     
     // Sort based on selected sort type
     if (extCount > 0) {
