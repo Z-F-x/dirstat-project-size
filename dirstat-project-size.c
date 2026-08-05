@@ -41,6 +41,12 @@ long long scannedFiles = 0;
 struct DirSizeStruct *topDirs = NULL;
 int topDirCount = 0, topDirCap = 0;
 
+// Every directory at every depth, filled when --all-dirs is set
+int allDirsMode = 0;
+int allDirsLimit = 50;
+struct DirEntryStruct { char *path; long long bytes; } *allDirs = NULL;
+int allDirCount = 0, allDirCap = 0;
+
 
 
 // ---------------------------------------------------------------------------
@@ -178,6 +184,7 @@ void print_help(void) {
     printf("  --exclude=pattern   Exclude paths containing pattern\n");
     printf("  --dirs              List subdirectories ranked by size\n");
     printf("  --fast              Sizes from stat only; skip line/char counts (much faster on big trees)\n");
+    printf("  --all-dirs[=N]      Rank every directory at every depth by size; show top N (default 50)\n");
     printf("Sorting Options:\n");
     printf("  --sort-descending   Sort by count descending (default)\n");
     printf("  --sort-ascending    Sort by count ascending\n");
@@ -312,6 +319,19 @@ long long process_path(const char *path, ProjectStats *projStats, ExtCount **ext
         total += process_path(subpath, projStats, extCounts, extCount, extCapacity, excludes, num_excludes, depth + 1);
     }
     closedir(dir);
+    if (allDirsMode && depth > 0) {
+        if (allDirCount >= allDirCap) {
+            allDirCap = allDirCap ? allDirCap * 2 : 64;
+            allDirs = realloc(allDirs, allDirCap * sizeof(*allDirs));
+            if (!allDirs) {
+                perror("realloc");
+                exit(1);
+            }
+        }
+        allDirs[allDirCount].path = strdup(path);
+        allDirs[allDirCount].bytes = total;
+        allDirCount++;
+    }
     if (showDirs && depth == 1) {
         if (topDirCount >= topDirCap) {
             topDirCap = topDirCap ? topDirCap * 2 : 8;
@@ -328,6 +348,16 @@ long long process_path(const char *path, ProjectStats *projStats, ExtCount **ext
         topDirCount++;
     }
     return total;
+}
+
+int compare_dir_entry_desc(const void *a, const void *b) {
+    const struct DirEntryStruct *da = (const struct DirEntryStruct*) a;
+    const struct DirEntryStruct *db = (const struct DirEntryStruct*) b;
+    if (da->bytes < db->bytes)
+        return 1;
+    if (da->bytes > db->bytes)
+        return -1;
+    return strcmp(da->path, db->path);
 }
 
 int compare_dir_size_desc(const void *a, const void *b) {
@@ -482,6 +512,14 @@ int main(int argc, char *argv[]) {
                 showDirs = 1;
             else if (strcmp(argv[i], "--fast") == 0)
                 fastMode = 1;
+            else if (strcmp(argv[i], "--all-dirs") == 0)
+                allDirsMode = 1;
+            else if (strncmp(argv[i], "--all-dirs=", 11) == 0) {
+                allDirsMode = 1;
+                allDirsLimit = atoi(argv[i] + 11);
+                if (allDirsLimit <= 0)
+                    allDirsLimit = 50;
+            }
             else if (strncmp(argv[i], "--exclude=", 10) == 0) {
                 if (num_excludes < MAX_EXCLUDES)
                     excludes[num_excludes++] = argv[i] + 10;
@@ -513,7 +551,7 @@ int main(int argc, char *argv[]) {
     
     // Process the directory
     showProgress = isatty(fileno(stderr));
-    process_path(root, &projStats, &extCounts, &extCount, &extCapacity, excludes, num_excludes, 0);
+    long long rootBytes = process_path(root, &projStats, &extCounts, &extCount, &extCapacity, excludes, num_excludes, 0);
     if (showProgress)
         fprintf(stderr, "\r\033[K");
     
@@ -605,6 +643,44 @@ int main(int argc, char *argv[]) {
             printf("\n");
         }
         free(topDirs);
+    }
+
+    // Print every-directory ranking (--all-dirs); filled during the main walk
+    if (allDirsMode) {
+        qsort(allDirs, allDirCount, sizeof(*allDirs), compare_dir_entry_desc);
+        int shown = (allDirCount < allDirsLimit) ? allDirCount : allDirsLimit;
+        size_t rootLen = strlen(root);
+
+        printf("\n%-52s %12s   %s\n", "Directory (all depths)", "Size (MB)", "Bar");
+        printf("--------------------------------------------------------------------------------\n");
+        for (int i = 0; i < shown; i++) {
+            const char *rel = allDirs[i].path;
+            if (strncmp(rel, root, rootLen) == 0) {
+                rel += rootLen;
+                while (*rel == '/')
+                    rel++;
+            }
+            double percentage = (rootBytes > 0) ? ((allDirs[i].bytes * 100.0) / rootBytes) : 0.0;
+            char gradColor[32] = "";
+            if (useColor)
+                get_gradient_color(i, shown, gradColor, sizeof(gradColor));
+            // Truncate long paths from the left; the tail is what identifies a dir
+            char disp[56];
+            size_t relLen = strlen(rel);
+            if (relLen > 52)
+                snprintf(disp, sizeof(disp), "...%s", rel + relLen - 49);
+            else
+                snprintf(disp, sizeof(disp), "%s", rel);
+            printf("%s%-52s%s %12.2f   ", headerColor, disp, resetColor,
+                   allDirs[i].bytes / (1024.0 * 1024.0));
+            print_bar(percentage, gradColor);
+            printf("\n");
+        }
+        if (allDirCount > shown)
+            printf("(top %d of %d directories; use --all-dirs=N for more)\n", shown, allDirCount);
+        for (int i = 0; i < allDirCount; i++)
+            free(allDirs[i].path);
+        free(allDirs);
     }
 
     free(extCounts);

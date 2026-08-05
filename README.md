@@ -56,7 +56,8 @@ Put the `.exe` in a folder on your `PATH`. (MSVC is not supported: the code uses
   `--only-bar-color`    Color only bars, not text\
   `--exclude=pattern`   Exclude paths containing pattern\
   `--dirs`              List immediate subdirectories ranked by total size\
-  `--fast`              Sizes from stat only; skips line/char counting (much faster on big trees)
+  `--fast`              Sizes from stat only; skips line/char counting (much faster on big trees)\
+  `--all-dirs[=N]`      Rank every directory at every depth by size; show top N (default 50)
 
 ### Sorting Options:
   `--sort-descending`   Sort by count descending (default)\
@@ -88,6 +89,9 @@ Adds a table of the immediate subdirectories ranked by their total size on disk,
 
 - ```dirstat-project-size --dirs --fast ~```\
 Fast mode takes sizes from file metadata instead of reading file contents, skipping the line and character counts. Recommended for very large trees (a whole home directory scans in a couple of minutes instead of hours). A live file counter is shown on the terminal while scanning.
+
+- ```dirstat-project-size --all-dirs --fast ~```\
+Ranks every directory at every depth by its total recursive size and shows the biggest ones (top 50 by default, `--all-dirs=200` for more). Because a parent always weighs at least as much as its children, the list reads as a drill-down chain — follow it to find exactly where the space is going in one run.
 
 ##### Sorting Options
 - ```dirstat-project-size /path/to/project --sort-alpha-asc```\
