@@ -25,6 +25,7 @@
 int useColor = 1;
 int toggleAscii = 0;   // When true, use ASCII '#' for filled and '-' for empty
 int onlyBarColor = 0;  // When true, text is not colored except the bars
+int showDirs = 0;      // When true, list immediate subdirectories ranked by size
 
 
 
@@ -47,6 +48,11 @@ typedef struct {
     char ext[64];      // file extension (e.g., "c", "cpp", "py")
     long count;
 } ExtCount;
+
+typedef struct {
+    char name[256];    // subdirectory name
+    long long bytes;   // total size on disk (sum of st_size)
+} DirSize;
 
 
 
@@ -156,6 +162,7 @@ void print_help(void) {
     printf("  --toggle-ascii      Use ASCII instead of Unicode blocks\n");
     printf("  --only-bar-color    Color only bars, not text\n");
     printf("  --exclude=pattern   Exclude paths containing pattern\n");
+    printf("  --dirs              List subdirectories ranked by size\n");
     printf("Sorting Options:\n");
     printf("  --sort-descending   Sort by count descending (default)\n");
     printf("  --sort-ascending    Sort by count ascending\n");
@@ -191,12 +198,16 @@ FileStats get_file_stats(const char *filepath) {
     FILE *fp = fopen(filepath, "rb");
     if (!fp)
         return s;
-    int c;
-    while ((c = fgetc(fp)) != EOF) {
-        s.bytes++;
-        s.chars++;
-        if (c == '\n')
+    static char buf[1 << 20];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        s.bytes += n;
+        s.chars += n;
+        const char *p = buf, *end = buf + n;
+        while ((p = memchr(p, '\n', end - p)) != NULL) {
             s.lines++;
+            p++;
+        }
     }
     fclose(fp);
     return s;
@@ -242,7 +253,9 @@ void process_path(const char *path, ProjectStats *projStats, ExtCount **extCount
     if (is_excluded(path, excludes, num_excludes))
         return;
     struct stat st;
-    if (stat(path, &st) != 0)
+    // lstat so symlinks are skipped: following them can loop forever or
+    // pull huge trees outside the project into the scan
+    if (lstat(path, &st) != 0)
         return;
     if (S_ISREG(st.st_mode)) {
         projStats->numFiles++;
@@ -271,6 +284,47 @@ void process_path(const char *path, ProjectStats *projStats, ExtCount **extCount
         }
         closedir(dir);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Recursively sum the size (st_size) of everything under a path.
+// Respects the same exclude patterns as the main scan.
+// ---------------------------------------------------------------------------
+long long dir_size_bytes(const char *path, const char **excludes, int num_excludes) {
+    if (is_excluded(path, excludes, num_excludes))
+        return 0;
+    struct stat st;
+    // lstat: don't follow symlinks (loop + double-count protection)
+    if (lstat(path, &st) != 0)
+        return 0;
+    if (S_ISREG(st.st_mode))
+        return (long long) st.st_size;
+    if (!S_ISDIR(st.st_mode))
+        return 0;
+    long long total = 0;
+    DIR *dir = opendir(path);
+    if (!dir)
+        return 0;
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+        char subpath[2048];
+        snprintf(subpath, sizeof(subpath), "%s/%s", path, entry->d_name);
+        total += dir_size_bytes(subpath, excludes, num_excludes);
+    }
+    closedir(dir);
+    return total;
+}
+
+int compare_dir_size_desc(const void *a, const void *b) {
+    const DirSize *da = (const DirSize*) a;
+    const DirSize *db = (const DirSize*) b;
+    if (da->bytes < db->bytes)
+        return 1;
+    if (da->bytes > db->bytes)
+        return -1;
+    return strcmp(da->name, db->name);
 }
 
 // ---------------------------------------------------------------------------
@@ -367,7 +421,9 @@ int main(int argc, char *argv[]) {
     const char *excludes[MAX_EXCLUDES];
     int num_excludes = 0;
 
+#ifdef _WIN32
     system("chcp 65001 > nul");
+#endif
     
     // First pass: Check if there's a directory argument (not starting with '-')
     int dir_arg_index = -1;
@@ -409,6 +465,8 @@ int main(int argc, char *argv[]) {
                 toggleAscii = 1;
             else if (strcmp(argv[i], "--only-bar-color") == 0)
                 onlyBarColor = 1;
+            else if (strcmp(argv[i], "--dirs") == 0)
+                showDirs = 1;
             else if (strncmp(argv[i], "--exclude=", 10) == 0) {
                 if (num_excludes < MAX_EXCLUDES)
                     excludes[num_excludes++] = argv[i] + 10;
@@ -507,6 +565,56 @@ int main(int argc, char *argv[]) {
         printf("\n");
     }
     
+    // Print subdirectory size table (--dirs)
+    if (showDirs) {
+        DirSize *dirSizes = NULL;
+        int dirCount = 0, dirCapacity = 0;
+        long long dirTotal = 0;
+        DIR *dir = opendir(root);
+        if (dir) {
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL) {
+                if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                    continue;
+                char subpath[2048];
+                snprintf(subpath, sizeof(subpath), "%s/%s", root, entry->d_name);
+                struct stat st;
+                if (lstat(subpath, &st) != 0 || !S_ISDIR(st.st_mode))
+                    continue;
+                if (is_excluded(subpath, excludes, num_excludes))
+                    continue;
+                if (dirCount >= dirCapacity) {
+                    dirCapacity = (dirCapacity == 0) ? 8 : (dirCapacity * 2);
+                    dirSizes = realloc(dirSizes, dirCapacity * sizeof(DirSize));
+                    if (!dirSizes) {
+                        perror("realloc");
+                        exit(1);
+                    }
+                }
+                snprintf(dirSizes[dirCount].name, sizeof(dirSizes[dirCount].name), "%s", entry->d_name);
+                dirSizes[dirCount].bytes = dir_size_bytes(subpath, excludes, num_excludes);
+                dirTotal += dirSizes[dirCount].bytes;
+                dirCount++;
+            }
+            closedir(dir);
+        }
+        qsort(dirSizes, dirCount, sizeof(DirSize), compare_dir_size_desc);
+
+        printf("\n%-24s %10s   %s\n", "Directory", "Size (MB)", "Bar");
+        printf("--------------------------------------------------------------\n");
+        for (int i = 0; i < dirCount; i++) {
+            double percentage = (dirTotal > 0) ? ((dirSizes[i].bytes * 100.0) / dirTotal) : 0.0;
+            char gradColor[32] = "";
+            if (useColor)
+                get_gradient_color(i, dirCount, gradColor, sizeof(gradColor));
+            printf("%s%-24.24s%s %10.2f   ", headerColor, dirSizes[i].name, resetColor,
+                   dirSizes[i].bytes / (1024.0 * 1024.0));
+            print_bar(percentage, gradColor);
+            printf("\n");
+        }
+        free(dirSizes);
+    }
+
     free(extCounts);
     free(root);
     return 0;
