@@ -4,9 +4,48 @@
 The idea is to get a quick overview of a new codebase to assess the project size, history and scope.
 
 ## Installation
-```git clone https://github.com/Z-F-x/dirstat-project-size.git```\
-```cd dirstat-project-size```\
-```sudo cp dirstat-project-size /usr/bin```
+
+### Prebuilt binaries
+Ready-to-run binaries live in [`bin/`](bin/):
+
+| Platform | File |
+|---|---|
+| macOS (Apple Silicon) | `bin/dirstat-project-size-macos-arm64` |
+| Linux x86_64 (Arch, etc.) | `bin/dirstat-project-size-linux-x86_64` |
+| Windows x86_64 | `bin/dirstat-project-size-windows-x86_64.exe` |
+
+On macOS/Linux, copy it somewhere on your `PATH` and make it executable:
+```sh
+install -m755 bin/dirstat-project-size-macos-arm64 ~/.local/bin/dirstat-project-size
+```
+macOS may quarantine downloaded binaries; if blocked, run `xattr -d com.apple.quarantine <file>` or build from source (it's one file).
+
+### Build from source
+
+#### Arch Linux (and other Linux distros)
+```sh
+sudo pacman -S --needed base-devel   # gcc; on Debian/Ubuntu: sudo apt install build-essential
+git clone https://github.com/Z-F-x/dirstat-project-size.git
+cd dirstat-project-size
+gcc -O2 -o dirstat-project-size dirstat-project-size.c
+sudo install -m755 dirstat-project-size /usr/local/bin/
+```
+
+#### macOS
+```sh
+xcode-select --install               # once, for the C compiler
+git clone https://github.com/Z-F-x/dirstat-project-size.git
+cd dirstat-project-size
+cc -O2 -o dirstat-project-size dirstat-project-size.c
+install -m755 dirstat-project-size ~/.local/bin/   # or /usr/local/bin
+```
+
+#### Windows
+Use a MinGW-w64 toolchain, e.g. [MSYS2](https://www.msys2.org/) (`pacman -S mingw-w64-ucrt-x86_64-gcc`) or [w64devkit](https://github.com/skeeto/w64devkit):
+```sh
+gcc -O2 -o dirstat-project-size.exe dirstat-project-size.c
+```
+Put the `.exe` in a folder on your `PATH`. (MSVC is not supported: the code uses POSIX `dirent.h`.)
 
 ## Usage
 
@@ -15,7 +54,9 @@ The idea is to get a quick overview of a new codebase to assess the project size
   `--no-color`          Disable colorized output\
   `--toggle-ascii`      Use ASCII instead of Unicode blocks\
   `--only-bar-color`    Color only bars, not text\
-  `--exclude=pattern`   Exclude paths containing pattern
+  `--exclude=pattern`   Exclude paths containing pattern\
+  `--dirs`              List immediate subdirectories ranked by total size\
+  `--fast`              Sizes from stat only; skips line/char counting (much faster on big trees)
 
 ### Sorting Options:
   `--sort-descending`   Sort by count descending (default)\
@@ -41,6 +82,12 @@ Uses ASCII characters (# for filled, - for empty) instead of Unicode blocks (█
 
 - ```dirstat-project-size --only-bar-color```\
 Applies color only to the percentage bars in the output, leaving all other text (headers, counts, etc.) in plain format. Keeps the visual emphasis on the bars while maintaining readable, uncolored text elsewhere.
+
+- ```dirstat-project-size --dirs```\
+Adds a table of the immediate subdirectories ranked by their total size on disk, with a size column in MB and percentage bars. Useful for finding what is taking up space.
+
+- ```dirstat-project-size --dirs --fast ~```\
+Fast mode takes sizes from file metadata instead of reading file contents, skipping the line and character counts. Recommended for very large trees (a whole home directory scans in a couple of minutes instead of hours). A live file counter is shown on the terminal while scanning.
 
 ##### Sorting Options
 - ```dirstat-project-size /path/to/project --sort-alpha-asc```\
