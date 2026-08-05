@@ -12,6 +12,12 @@
 #include <limits.h>   // for PATH_MAX
 #include <ctype.h>    // for isdigit() and tolower()
 
+#ifdef _WIN32
+// MinGW has no lstat; plain stat is fine there (symlink loops are a
+// POSIX concern and Windows junctions are rare in scanned trees)
+#define lstat stat
+#endif
+
 // ANSI escape definitions
 #define ANSI_RESET   "\033[0m"
 #define ANSI_BOLD    "\033[1m"
